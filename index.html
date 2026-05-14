@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Lances — Leilão de Joias Caixa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C97B;
+    --gold-dim: #8A6D2F;
+    --bg: #0E0C0A;
+    --bg2: #161310;
+    --bg3: #1E1A15;
+    --bg4: #262018;
+    --border: rgba(201,168,76,0.18);
+    --border-strong: rgba(201,168,76,0.38);
+    --text: #F0EAD8;
+    --text-muted: #9A8F78;
+    --text-dim: #5C5446;
+    --danger: #E86A4A;
+    --success: #5DB88A;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+
+  /* HEADER */
+  header {
+    padding: 3.5rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+
+  .header-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-tag::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+  h1 em {
+    color: var(--gold);
+    font-style: italic;
+  }
+
+  .subtitle {
+    font-size: 15px;
+    color: var(--text-muted);
+    font-weight: 300;
+    max-width: 520px;
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  .stat {
+    background: var(--bg2);
+    padding: 1.25rem 1rem;
+    text-align: center;
+  }
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .stat-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.7rem;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* CHART */
+  .chart-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .chart-card h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .chart-card p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+  }
+  .chart-wrap {
+    position: relative;
+    height: 200px;
+    width: 100%;
+  }
+
+  /* PERCENTILES */
+  .perc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .perc-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .perc-card h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+
+  .perc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .perc-row:last-child { border-bottom: none; }
+  .perc-row span:first-child { color: var(--text-muted); }
+  .perc-row span:last-child {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--gold-light);
+    font-weight: 500;
+  }
+  .perc-row.highlight {
+    background: rgba(201,168,76,0.08);
+    border-radius: 6px;
+    padding: 7px 8px;
+    margin: 2px -8px;
+  }
+  .perc-row.highlight span:last-child { color: var(--gold); }
+
+  /* RANGE TABLE */
+  .range-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .range-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .range-table td {
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(201,168,76,0.06);
+    color: var(--text-muted);
+    vertical-align: middle;
+  }
+  .range-table td:last-child {
+    font-family: 'DM Mono', monospace;
+    color: var(--gold-light);
+    text-align: right;
+  }
+  .bar-cell { width: 130px; }
+  .bar-bg {
+    background: rgba(201,168,76,0.1);
+    border-radius: 3px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    background: var(--gold);
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  /* SIMULATOR */
+  .sim-card {
+    background: var(--bg2);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  .sim-header {
+    background: rgba(201,168,76,0.06);
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sim-header svg {
+    color: var(--gold);
+    flex-shrink: 0;
+  }
+  .sim-header-text h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--text);
+  }
+  .sim-header-text p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .sim-body {
+    padding: 1.5rem;
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .field label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 7px;
+  }
+
+  .field input,
+  .field select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus,
+  .field select:focus { border-color: var(--gold); }
+  .field select { cursor: pointer; }
+
+  .strategy-pills {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+  .pill {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg3);
+  }
+  .pill:hover { border-color: var(--gold-dim); }
+  .pill.active {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.1);
+  }
+  .pill-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+  .pill.active .pill-name { color: var(--gold); }
+  .pill-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .pill.active .pill-pct { color: var(--gold-light); }
+  .pill-desc {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    line-height: 1.3;
+  }
+
+  /* RESULTS */
+  .results-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .result-block {
+    background: var(--bg3);
+    padding: 1.1rem 1rem;
+    text-align: center;
+  }
+  .result-block.main {
+    background: rgba(201,168,76,0.1);
+  }
+  .result-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .result-block.main .result-label { color: var(--gold-dim); }
+  .result-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .result-block.main .result-val { color: var(--gold-light); }
+
+  /* PROBABILITY BAR */
+  .prob-section {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+  .prob-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .prob-header span:first-child {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .prob-header span:last-child {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 500;
+  }
+  .prob-track {
+    background: var(--bg3);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .prob-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .prob-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  /* TIPS */
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .tip {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem;
+  }
+  .tip-icon {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  .tip h4 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+  .tip p {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .tip.highlight-tip {
+    border-color: rgba(201,168,76,0.3);
+    background: rgba(201,168,76,0.04);
+  }
+  .tip.highlight-tip h4 { color: var(--gold-light); }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  footer a { color: var(--gold-dim); text-decoration: none; }
+  footer a:hover { color: var(--gold); }
+
+  /* ANIMATION */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .wrap > * { animation: fadeUp 0.5s ease both; }
+  header { animation-delay: 0s; }
+  .stats-row { animation-delay: 0.05s; }
+  .chart-card { animation-delay: 0.1s; }
+  .perc-grid { animation-delay: 0.15s; }
+  .sim-card { animation-delay: 0.2s; }
+  .tips-grid { animation-delay: 0.25s; }
+  footer { animation-delay: 0.3s; }
+
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .perc-grid { grid-template-columns: 1fr; }
+    .input-row { grid-template-columns: 1fr; }
+    .strategy-pills { grid-template-columns: 1fr 1fr; }
+    .results-row { grid-template-columns: 1fr; }
+    .tips-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-tag">Ferramenta de análise</div>
+    <h1>Calculadora de Lances<br><em>Leilão de Joias Caixa</em></h1>
+    <p class="subtitle">Baseada em 243 lotes analisados do Leilão nº 0048/2026 — Agência Montes Claros, MG 0132</p>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-label">Lotes analisados</div>
+      <div class="stat-val">243</div>
+      <div class="stat-sub">3 arrematantes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Média dos lances</div>
+      <div class="stat-val">157,8%</div>
+      <div class="stat-sub">do valor do catálogo</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Mediana</div>
+      <div class="stat-val">157,3%</div>
+      <div class="stat-sub">P50</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Intervalo</div>
+      <div class="stat-val">104–218%</div>
+      <div class="stat-sub">mín → máx</div>
+    </div>
+  </div>
+
+  <p class="section-title">Distribuição dos lances</p>
+  <div class="chart-card">
+    <h3>Como os lances se distribuíram</h3>
+    <p>Percentual do valor do catálogo pago pelos vencedores — 243 lotes</p>
+    <div class="chart-wrap">
+      <canvas id="distChart" role="img" aria-label="Histograma de distribuição dos lances por faixa percentual. Faixa dominante é 141-160% com 126 lotes.">Distribuição: 100-120%: 7 lotes; 121-140%: 13 lotes; 141-160%: 126 lotes; 161-180%: 76 lotes; 181-200%: 20 lotes; 200%+: 1 lote.</canvas>
+    </div>
+  </div>
+
+  <div class="perc-grid">
+    <div class="perc-card">
+      <h3>Percentis dos lances</h3>
+      <div class="perc-row">
+        <span>P10 — abaixo de (10% dos lotes)</span>
+        <span>141,3%</span>
+      </div>
+      <div class="perc-row">
+        <span>P25 — quartil inferior</span>
+        <span>150,7%</span>
+      </div>
+      <div class="perc-row highlight">
+        <span>P50 — mediana</span>
+        <span>157,3%</span>
+      </div>
+      <div class="perc-row">
+        <span>P75 — quartil superior</span>
+        <span>166,3%</span>
+      </div>
+      <div class="perc-row">
+        <span>P90 — acima de (10% dos lotes)</span>
+        <span>178,9%</span>
+      </div>
+    </div>
+
+    <div class="perc-card">
+      <h3>Média por faixa do catálogo</h3>
+      <table class="range-table">
+        <thead>
+          <tr>
+            <th>Faixa de valor</th>
+            <th>Lotes</th>
+            <th style="width:130px;">Proporção</th>
+            <th>Média</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Até R$ 1.000</td>
+            <td>49</td>
+            <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:97%"></div></div></td>
+            <td>155,3%</td>
+          </tr>
+          <tr>
+            <td>R$ 1.001 – 3.000</td>
+            <td>116</td>
+            <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></td>
+            <td>159,9%</td>
+          </tr>
+          <tr>
+            <td>R$ 3.001 – 6.000</td>
+            <td>56</td>
+            <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:98%"></div></div></td>
+            <td>156,4%</td>
+          </tr>
+          <tr>
+            <td>R$ 6.001 – 12.000</td>
+            <td>20</td>
+            <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:97%"></div></div></td>
+            <td>154,8%</td>
+          </tr>
+          <tr>
+            <td>Acima de R$ 12.000</td>
+            <td>2</td>
+            <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div></td>
+            <td>161,6%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="section-title">Simulador de lance</p>
+  <div class="sim-card">
+    <div class="sim-header">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M9 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-3"/>
+        <path d="M9 15h3l8.5-8.5a1.5 1.5 0 0 0-3-3L9 12v3"/>
+        <path d="M16 5l3 3"/>
+      </svg>
+      <div class="sim-header-text">
+        <h3>Projeção de lance</h3>
+        <p>Informe o valor do catálogo e escolha sua estratégia</p>
+      </div>
+    </div>
+    <div class="sim-body">
+      <div class="input-row">
+        <div class="field">
+          <label>Valor do catálogo (R$)</label>
+          <input type="number" id="catVal" value="3000" min="1" step="100" placeholder="Ex: 3000">
+        </div>
+        <div class="field">
+          <label>Tarifa de licitação (%)</label>
+          <input type="number" id="taxRate" value="6" min="0" max="20" step="0.5" placeholder="6">
+        </div>
+      </div>
+
+      <p style="font-size:11px; color:var(--text-dim); margin-bottom:10px; font-family:'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase;">Estratégia de lance</p>
+      <div class="strategy-pills">
+        <div class="pill" data-pct="1.507" onclick="selectStrategy(this)">
+          <div class="pill-name">Conservadora</div>
+          <div class="pill-pct">150,7%</div>
+          <div class="pill-desc">P25</div>
+        </div>
+        <div class="pill active" data-pct="1.573" onclick="selectStrategy(this)">
+          <div class="pill-name">Equilibrada</div>
+          <div class="pill-pct">157,3%</div>
+          <div class="pill-desc">Mediana</div>
+        </div>
+        <div class="pill" data-pct="1.663" onclick="selectStrategy(this)">
+          <div class="pill-name">Agressiva</div>
+          <div class="pill-pct">166,3%</div>
+          <div class="pill-desc">P75</div>
+        </div>
+        <div class="pill" data-pct="1.789" onclick="selectStrategy(this)">
+          <div class="pill-name">Máxima</div>
+          <div class="pill-pct">178,9%</div>
+          <div class="pill-desc">P90</div>
+        </div>
+      </div>
+
+      <div class="results-row">
+        <div class="result-block">
+          <div class="result-label">Lance sugerido</div>
+          <div class="result-val" id="resLance">R$ 4.719,00</div>
+        </div>
+        <div class="result-block">
+          <div class="result-label">Tarifa</div>
+          <div class="result-val" id="resTarifa">R$ 283,14</div>
+        </div>
+        <div class="result-block main">
+          <div class="result-label">Total a desembolsar</div>
+          <div class="result-val" id="resTotal">R$ 5.002,14</div>
+        </div>
+      </div>
+
+      <div class="prob-section">
+        <div class="prob-header">
+          <span>Probabilidade histórica de vencer com este lance</span>
+          <span id="probPct">50%</span>
+        </div>
+        <div class="prob-track">
+          <div class="prob-fill" id="probBar" style="width:50%"></div>
+        </div>
+        <div class="prob-note" id="probNote">Na mediana — metade dos lotes vencedores ficaram abaixo deste valor</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="section-title">Dicas para o próximo leilão</p>
+  <div class="tips-grid">
+    <div class="tip highlight-tip">
+      <div class="tip-icon">🥇</div>
+      <h4>A mediana é seu ponto de partida</h4>
+      <p>Lances entre 155–160% do catálogo foram vencedores em metade dos lotes. É um patamar seguro para lotes que você realmente quer.</p>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">🥈</div>
+      <h4>Prata e metais não nobres</h4>
+      <p>Lotes de prata/metal não nobre foram arrematados a 104–118% do catálogo. Muito menos competitivos — estratégia conservadora funciona.</p>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">📊</div>
+      <h4>Faixa de valor pouco importa</h4>
+      <p>A média ficou entre 154–161% independente do valor do lote. Não há vantagem em lotes mais caros ou mais baratos em termos de competição.</p>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">⚡</div>
+      <h4>P90 como teto de segurança</h4>
+      <p>Se o lote é raro e você precisa garantir, 178–180% cobre 90% dos cenários históricos. Acima disso é território de exceção.</p>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">💡</div>
+      <h4>Inclua sempre a tarifa no cálculo</h4>
+      <p>A tarifa de licitação é cobrada sobre o valor total das arrematações. Use o simulador acima para ver o custo real antes de comprometer o lance.</p>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">🔄</div>
+      <h4>Reclassificações existem</h4>
+      <p>O documento indica que pode haver reclassificações de lotes. Acompanhe o edital e os comunicados da Caixa antes da data de licitação.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>Baseado em 243 lotes do Leilão 0048/2026 — AG. Montes Claros MG 0132</span>
+    <span>Dados históricos. Não garante resultados futuros.</span>
+  </footer>
+
+</div>
+
+<script>
+let activePct = 1.573;
+
+const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+function selectStrategy(el) {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  activePct = parseFloat(el.dataset.pct);
+  update();
+}
+
+function getProbability(pct) {
+  if (pct <= 1.413) return { prob: 10, note: 'Apenas 10% dos lotes históricos foram vencidos com lance tão baixo.' };
+  if (pct <= 1.507) return { prob: 25, note: 'Cobre o quartil inferior — 25% dos lotes históricos ficaram abaixo.' };
+  if (pct <= 1.573) return { prob: 50, note: 'Na mediana — metade dos lotes vencedores ficaram abaixo deste valor.' };
+  if (pct <= 1.663) return { prob: 75, note: 'Cobre 75% dos lotes históricos — boa chance de vencer.' };
+  if (pct <= 1.789) return { prob: 90, note: '90% dos lances históricos ficaram abaixo deste patamar.' };
+  return { prob: 97, note: 'Acima de P90 — altíssima probabilidade de vencer, mas custo elevado.' };
+}
+
+function update() {
+  const cat = parseFloat(document.getElementById('catVal').value) || 0;
+  const tax = parseFloat(document.getElementById('taxRate').value) || 0;
+  const lance = cat * activePct;
+  const tarifa = lance * (tax / 100);
+  const total = lance + tarifa;
+
+  document.getElementById('resLance').textContent = fmt(lance);
+  document.getElementById('resTarifa').textContent = fmt(tarifa);
+  document.getElementById('resTotal').textContent = fmt(total);
+
+  const { prob, note } = getProbability(activePct);
+  document.getElementById('probPct').textContent = prob + '%';
+  document.getElementById('probBar').style.width = prob + '%';
+  document.getElementById('probNote').textContent = note;
+}
+
+document.getElementById('catVal').addEventListener('input', update);
+document.getElementById('taxRate').addEventListener('input', update);
+update();
+
+new Chart(document.getElementById('distChart'), {
+  type: 'bar',
+  data: {
+    labels: ['100–120%', '121–140%', '141–160%', '161–180%', '181–200%', '200%+'],
+    datasets: [{
+      label: 'Lotes',
+      data: [7, 13, 126, 76, 20, 1],
+      backgroundColor: [
+        'rgba(201,168,76,0.25)',
+        'rgba(201,168,76,0.35)',
+        'rgba(201,168,76,0.85)',
+        'rgba(201,168,76,0.6)',
+        'rgba(201,168,76,0.35)',
+        'rgba(201,168,76,0.2)',
+      ],
+      borderColor: [
+        'rgba(201,168,76,0.4)',
+        'rgba(201,168,76,0.5)',
+        'rgba(201,168,76,1)',
+        'rgba(201,168,76,0.8)',
+        'rgba(201,168,76,0.5)',
+        'rgba(201,168,76,0.35)',
+      ],
+      borderWidth: 1,
+      borderRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1E1A15',
+        borderColor: 'rgba(201,168,76,0.3)',
+        borderWidth: 1,
+        titleColor: '#C9A84C',
+        bodyColor: '#9A8F78',
+        callbacks: {
+          label: ctx => `${ctx.parsed.y} lotes (${(ctx.parsed.y / 243 * 100).toFixed(1)}%)`
+        }
+      }
+    },
+    scales: {
+      y: {
+        grid: { color: 'rgba(201,168,76,0.07)' },
+        ticks: { color: '#5C5446', font: { size: 11 } },
+        title: { display: true, text: 'Quantidade de lotes', color: '#5C5446', font: { size: 11 } }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: '#5C5446', font: { size: 11 } }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
